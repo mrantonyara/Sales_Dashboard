@@ -522,7 +522,7 @@
 
             // Генерируем HTML для магазинов
             const storesHtml = entries.map(e => {
-                const color = storeColors[e.location] || '#FFFFFF';
+                const color = storeColors[e.location] || '#000000';
                 const warning = e.sumCount >= (warningThresholds[e.location] || Infinity);
                 
                 return `
