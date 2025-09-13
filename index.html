@@ -131,6 +131,14 @@
       h1{font-size:16px}
     }
   </style>
+  <style>
+    /* Force dark color scheme for browsers / user overrides */
+    html { color-scheme: dark; }
+    html, body { background-color: #071023 !important; }
+    body { color: #fff !important; }
+    /* Ensure our gradient takes precedence if something overrides body background */
+    body { background: linear-gradient(180deg, #071023 0%, #0b1430 100%) !important; }
+  </style>
 </head>
 <body>
   <div class="container">
