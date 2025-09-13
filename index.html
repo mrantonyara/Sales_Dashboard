@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Dashboard - Liquid Glass</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                0 0 80px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                0 12px 40px rgba(0, 0, 0, 0.15),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+                0 0 100px rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+            text-shadow: 0 0 30px rgba(255,255,255,0.3);
+        }
+
+        .update-time {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            font-weight: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #4facfe;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px #4facfe;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+        }
+
+        .stores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .store-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .store-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--store-color) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .store-card:hover::after {
+            opacity: 1;
+        }
+
+        .store-card:hover {
+            transform: translateY(-3px) scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .store-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .store-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--store-color);
+            text-shadow: 0 0 20px var(--store-color);
+        }
+
+        .store-date {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .outdated-icon {
+            font-size: 16px;
+        }
+
+        .store-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .stat-row:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #fff;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .warning-icon {
+            color: #ffc107;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .total-section {
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .total-section::before {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: -100%;
+            width: 300%;
+            height: 300%;
+            background: radial-gradient(circle, rgba(79,172,254,0.1) 0%, transparent 50%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .total-label {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .total-value {
+            font-size: 42px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(79,172,254,0.5);
+        }
+
+        .loading {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            min-height: 200px;
+        }
+
+        .loading-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(245, 87, 108, 0.1);
+            border: 1px solid rgba(245, 87, 108, 0.3);
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .night-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255, 0, 0, 0.1);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            animation: nightPulse 2s infinite;
+        }
+
+        @keyframes nightPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 32px; }
+            .stores-grid { grid-template-columns: 1fr; }
+            .total-value { font-size: 32px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glass-card">
+            <div class="header">
+                <h1>Sales Dashboard</h1>
+                <div class="update-time">
+                    <div class="pulse-dot"></div>
+                    <span id="updateTime">Загрузка данных...</span>
+                </div>
+            </div>
+
+            <div id="content">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <span>Подключение к GitHub...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Конфигурация
+        const reportApiUrl = "https://api.github.com/repos/mrantonyara/iOSWidgetUniversam/contents/Sales_Report.txt";
+        const historyApiUrl = "https://api.github.com/repos/mrantonyara/iOSWidgetUniversam/contents/sales_data.txt";
+
+        // Цвета магазинов
+        const storeColors = {
+            "Универсам": "#FFC0CB",
+            "Назар": "#ADD8E6",
+            "На рахате": "#FDFD96",
+            "Балапан": "#F5F5DC",
+            "Pozitiv": "#FDFD96",
+            "Спутник": "#FFDAB9",
+            "pStore": "#FFFFFF"
+        };
+
+        // Пороги предупреждений
+        const warningThresholds = {
+            "Универсам": 80,
+            "Назар": 40,
+            "Балапан": 40,
+            "Pozitiv": 70,
+            "На рахате": 45,
+            "Спутник": 70,
+            "pStore": 70
+        };
+
+        // Форматирование суммы
+        function formatAmount(amount) {
+            return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        }
+
+        // Текущая дата
+        function getCurrentDate() {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            return `${day}.${month}.${now.getFullYear()}`;
+        }
+
+        // Загрузка через GitHub API
+        async function loadContentViaAPI(apiUrl) {
+            try {
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                if (!response.ok) throw new Error('API request failed');
+
+                const data = await response.json();
+                if (data.content && data.encoding === 'base64') {
+                    return atob(data.content.replace(/\n/g, ''));
+                }
+                throw new Error('Unexpected API response format');
+            } catch (error) {
+                console.error('API Error:', error);
+                // Fallback to raw URL
+                const rawUrl = apiUrl.replace('api.github.com/repos', 'raw.githubusercontent.com')
+                                    .replace('/contents/', '/master/');
+                const response = await fetch(rawUrl + '?t=' + Date.now());
+                return await response.text();
+            }
+        }
+
+        // Парсинг исторических данных
+        function parseHistorical(content) {
+            if (!content || content.trim() === '') return {};
+            
+            return content.split('\n')
+                .map(l => l.trim())
+                .filter(l => l)
+                .reduce((acc, line) => {
+                    const [loc, num] = line.split(':').map(s => s.trim());
+                    acc[loc] = parseInt(num, 10) || 0;
+                    return acc;
+                }, {});
+        }
+
+        // Обработка отчета
+        function processReport(content, historicalSales) {
+            if (!content || content.trim() === '') {
+                return { dateLine: 'Нет данных', entries: [], totalChecks: 0, totalAmount: 0 };
+            }
+
+            const lines = content.split('\n').filter(l => l.trim() !== '');
+            const dateLine = lines.shift() || 'Нет данных';
+            
+            const currentDate = getCurrentDate();
+            let totalChecks = 0;
+            let totalAmount = 0;
+            const entries = [];
+
+            for (let i = 0; i < lines.length;) {
+                const location = lines[i].split(':')[0].trim();
+                let date, details;
+
+                if (lines[i + 1] && lines[i + 1].includes("на сумму")) {
+                    date = currentDate;
+                    details = lines[i + 1].trim();
+                    i += 2;
+                } else if (lines[i + 1] && lines[i + 2]) {
+                    date = lines[i + 1].split(' ')[0].trim();
+                    details = lines[i + 2].trim();
+                    i += 3;
+                } else {
+                    i++;
+                    continue;
+                }
+
+                details = details.replace(",00", "").replace(/ /g, " ").trim();
+                const parts = details.split(' ');
+                const checkCount = parseInt(parts[0], 10) || 0;
+                const amountPart = details.split(' на сумму ')[1]?.replace('₸', '')?.replace(/ /g, '') || '0';
+                const amount = parseInt(amountPart, 10) || 0;
+
+                const isOutdated = (checkCount === 0 || date !== currentDate);
+                const histCount = historicalSales[location] || 0;
+                const sumCount = date === currentDate ? histCount + checkCount : histCount;
+
+                if (date === currentDate) {
+                    totalChecks += checkCount;
+                    totalAmount += amount;
+                }
+
+                entries.push({
+                    location,
+                    date,
+                    checkCount,
+                    amount,
+                    sumCount,
+                    isOutdated
+                });
+            }
+
+            return { dateLine, entries, totalChecks, totalAmount };
+        }
+
+        // Отрисовка интерфейса
+        function renderDashboard(data) {
+            const { dateLine, entries, totalChecks, totalAmount } = data;
+
+            // Проверка ночного времени
+            const match = dateLine.match(/\b(\d{1,2}):(\d{2})\b/);
+            let isNight = false;
+            if (match) {
+                const hour = parseInt(match[1], 10);
+                const minute = parseInt(match[2], 10);
+                isNight = (hour === 23 && minute >= 30) || (hour < 8);
+            }
+
+            // Обновляем время
+            document.getElementById('updateTime').innerHTML = 
+                dateLine + (isNight ? ' <span class="night-indicator">❌ Ночной режим</span>' : '');
+
+            // Генерируем HTML для магазинов
+            const storesHtml = entries.map(e => {
+                const color = storeColors[e.location] || '#FFFFFF';
+                const warning = e.sumCount >= (warningThresholds[e.location] || Infinity);
+                
+                return `
+                    <div class="store-card" style="--store-color: ${color}">
+                        <div class="store-header">
+                            <div class="store-name">${e.location}</div>
+                            <div class="store-date">
+                                ${e.isOutdated ? '<span class="outdated-icon">❓</span>' : ''}
+                                ${e.date}
+                            </div>
+                        </div>
+                        <div class="store-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">Чеки сегодня:</span>
+                                <span class="stat-value">${e.checkCount}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Всего чеков:</span>
+                                <span class="stat-value">
+                                    ${e.sumCount}
+                                    ${warning ? '<span class="warning-icon">⚠️</span>' : ''}
+                                </span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Сумма:</span>
+                                <span class="stat-value">${formatAmount(e.amount)} ₸</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Обновляем контент
+            document.getElementById('content').innerHTML = `
+                <div class="stores-grid">
+                    ${storesHtml}
+                </div>
+                <div class="total-section">
+                    <div class="total-label">Итого за день</div>
+                    <div class="total-value">${totalChecks} чеков • ${formatAmount(totalAmount)} ₸</div>
+                </div>
+            `;
+        }
+
+        // Главная функция загрузки
+        async function loadDashboard() {
+            try {
+                const [reportText, historyText] = await Promise.all([
+                    loadContentViaAPI(reportApiUrl),
+                    loadContentViaAPI(historyApiUrl)
+                ]);
+
+                const historicalSales = parseHistorical(historyText);
+                const data = processReport(reportText, historicalSales);
+                
+                renderDashboard(data);
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="error">
+                        <p>Ошибка загрузки данных</p>
+                        <p style="font-size: 14px; margin-top: 10px; opacity: 0.8;">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Запуск
+        loadDashboard();
+        
+        // Автообновление каждую минуту
+        setInterval(loadDashboard, 60000);
+
+        // Обновление времени каждую секунду
+        setInterval(() => {
+            const now = new Date();
+            const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const timeElement = document.querySelector('.update-time span');
+            if (timeElement && !timeElement.innerHTML.includes('Загрузка')) {
+                // Сохраняем основной текст и добавляем текущее время
+                const mainText = timeElement.innerHTML.split(' • ')[0];
+                timeElement.innerHTML = mainText + ' • ' + timeString;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
