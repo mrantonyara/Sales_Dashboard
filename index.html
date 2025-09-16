@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>SamBarista - Sales Tracker</title>
+    <title>SamBarista - Sales Tracker (fixed inactive logic)</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -114,9 +114,13 @@
             min-height: 160px;
         }
 
+        /* replaced opacity-based inactive styling with grayscale + less contrast
+           actual color fading now applied to text elements from JS (so borders and
+           gradients can remain visible while text gets faded like in Scriptable logic) */
         .store-card.inactive {
-          opacity: 0.45;
+          filter: grayscale(36%) contrast(0.9);
         }
+        .store-card.inactive:hover { transform: none; box-shadow: none; }
 
         .store-card::after {
             content: '';
@@ -128,7 +132,7 @@
         .store-card:hover { transform: translateY(-3px); box-shadow:0 12px 36px rgba(0,0,0,0.6); background: #343434; }
 
         .store-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; }
-        .store-name { font-size: 22px; font-weight:800; color:var(--store-color); } /* увеличено название магазина */
+        .store-name { font-size: 22px; font-weight:800; color:var(--store-color); }
         .store-date { font-size:13px; color: rgba(255,255,255,0.65); display:flex; align-items:center; gap:6px; }
 
         /* --- основной крупный блок с числами --- */
@@ -148,11 +152,11 @@
             font-weight:800;
             font-size: clamp(22px, 5vw, 44px);
             line-height: 1;
-            color: var(--store-color); /* цвет магазина */
+            color: var(--store-color);
             letter-spacing: -0.5px;
         }
         .label-small {
-            font-size: 13px; /* единый размер для подписи */
+            font-size: 13px;
             color: rgba(255,255,255,0.78);
             font-weight:700;
             text-transform: none;
@@ -167,17 +171,16 @@
             gap:6px;
         }
 
-        /* Сумма чуть меньше, в цвете магазина */
         .big-amount {
             font-weight:800;
-            font-size: clamp(18px, 4.5vw, 38px); /* чуть меньше, чем big-count */
+            font-size: clamp(18px, 4.5vw, 38px);
             line-height:1;
-            color: var(--store-color); /* цвет магазина */
+            color: var(--store-color);
             text-shadow: 0 0 8px rgba(0,0,0,0.25);
         }
 
         .amount-sub {
-            font-size:13px; /* совпадает с label-small */
+            font-size:13px;
             color: rgba(255,255,255,0.75);
             font-weight:700;
             text-transform: none;
@@ -228,7 +231,7 @@
         .total-value {
             font-size: 36px;
             font-weight: 900;
-            color: #ffffff; /* итог белый (только значение белое) */
+            color: #ffffff;
             text-shadow: 0 0 18px rgba(0,0,0,0.08);
         }
 
@@ -315,7 +318,6 @@
             return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
         }
 
-        // склонение "стакан" на русский: 1 стакан, 2-4 стакана, 5-0 стаканов
         function cupsLabel(count) {
             const n = Math.abs(count) % 100;
             const n1 = n % 10;
@@ -353,12 +355,9 @@
             },{});
         }
 
-        // Парсинг первой строки с поддержкой "13 сентября, суббота в 12:53" и dd.mm.yyyy или только time
         function tryParseReportDateLine(dateLine) {
             if (!dateLine) return null;
             dateLine = dateLine.trim();
-
-            // ---- 1) попытка найти формат "13 сентября ... в 12:53" (русские месяцы) ----
             const months = {
                 'января':1,'февраля':2,'марта':3,'апреля':4,'мая':5,'июня':6,'июля':7,'августа':8,'сентября':9,'октября':10,'ноября':11,'декабря':12,
                 'январь':1,'февраль':2,'март':3,'апрель':4,'май':5,'июнь':6,'июль':7,'август':8,'сентябрь':9,'октябрь':10,'ноябрь':11,'декабрь':12
@@ -368,7 +367,7 @@
                 const day = parseInt(nameMatch[1],10);
                 const month = months[nameMatch[2].toLowerCase()];
                 const timeStr = nameMatch[3] || null;
-                const year = (new Date()).getFullYear(); // предполагаем текущий год
+                const year = (new Date()).getFullYear();
                 let d = null;
                 if (timeStr) {
                     d = new Date(year, month-1, day);
@@ -380,7 +379,6 @@
                 return d;
             }
 
-            // ---- 2) формат dd.mm.yyyy или dd.mm ----
             const dmY = dateLine.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
             const dm = dateLine.match(/(\d{1,2})\.(\d{1,2})/);
             const timeMatch = dateLine.match(/(\d{1,2}:\d{2})/);
@@ -404,7 +402,6 @@
                 return d;
             }
 
-            // ---- 3) только время "12:53" (тогда считаем за сегодня) ----
             if (timeMatch) {
                 const [hh,mm] = timeMatch[1].split(':').map(x=>parseInt(x,10));
                 const now = new Date();
@@ -415,7 +412,6 @@
             return null;
         }
 
-        // человеческое представление левой части: "13 сентября, суббота в 12:53"
         function leftPartFromDate(d) {
             if (!d) return null;
             const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -454,7 +450,6 @@
                 const historicalSales = parseHistorical(historyText);
                 const data = processReport(reportText, historicalSales);
 
-                // берем первую строку (dateLine) и парсим
                 const firstLine = data.dateLine || '';
                 const parsedDate = tryParseReportDateLine(firstLine);
                 lastReportDate = parsedDate; // может быть null
@@ -469,7 +464,6 @@
                         <p style="font-size: 14px; margin-top: 10px; opacity: 0.8;">${error.message}</p>
                     </div>
                 `;
-                // обновим верх, если есть lastReportDate
                 updateTopAndAgoDisplay(lastReportDate);
             } finally {
                 if (manual) refreshBtn.disabled = false;
@@ -523,29 +517,43 @@
             return { dateLine, entries, totalChecks, totalAmount };
         }
 
+        // helper: convert hex to rgba string with alpha
+        function rgbaFromHex(hex, alpha = 1) {
+            const h = hex.replace('#','');
+            const bigint = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
         function renderDashboard(data) {
             const { dateLine, entries, totalChecks, totalAmount } = data;
 
             const storesHtml = entries.map(e => {
                 const color = storeColors[e.location] || '#cbd5df';
+                const isInactive = !!e.isOutdated; // use Scriptable logic: outdated -> faded
                 const warning = e.sumCount >= (warningThresholds[e.location] || Infinity);
                 const cupsWord = cupsLabel(e.checkCount);
 
+                const textColor = isInactive ? rgbaFromHex(color, 0.45) : color;
+                const nameColor = isInactive ? 'rgba(128,128,128,0.85)' : color; // store name slightly muted when inactive
+
                 return `
-<div class="store-card ${e.checkCount === 0 ? 'inactive' : ''}" style="--store-color: ${color}">
+<div class="store-card ${isInactive ? 'inactive' : ''}" style="--store-color: ${color}">
     <div class="store-header">
-        <div class="store-name">${e.location}</div>
+        <div class="store-name" style="color: ${nameColor};">${e.location}</div>
         <div class="store-date">${e.isOutdated ? '<span class="outdated-icon"></span>' : ''}${e.date}</div>
     </div>
 
     <div class="store-main">
         <div class="main-left">
-            <div class="big-count">${e.checkCount}</div>
+            <div class="big-count" style="color: ${textColor};">${e.checkCount}</div>
             <div class="label-small">${cupsWord}</div>
         </div>
 
         <div class="main-right">
-            <div class="big-amount">${formatAmount(e.amount)} ₸</div>
+            <div class="big-amount" style="color: ${textColor};">${formatAmount(e.amount)} ₸</div>
             <div class="amount-sub">Сумма</div>
         </div>
     </div>
@@ -553,7 +561,7 @@
     <div class="store-extra">
         <div class="stat-row" title="Суммарное количество с последнего обслуживания">
             <div class="stat-label">С обслуживания</div>
-            <div class="stat-value">${e.sumCount} ${warning ? '<span class="warning-icon">⚠️</span>' : ''}</div>
+            <div class="stat-value" style="color: ${textColor};">${e.sumCount} ${warning ? '<span class="warning-icon">⚠️</span>' : ''}</div>
         </div>
     </div>
 </div>
@@ -571,10 +579,8 @@
             `;
         }
 
-        // Обновление верхней строки и "Обновлено" на основе даты из файла.
         function updateTopAndAgoDisplay(parsedDate) {
             const now = new Date();
-            // Формируем левую часть: либо из parsedDate, либо из текущего времени
             const left = parsedDate ? leftPartFromDate(parsedDate) : leftPartFromDate(now);
             const nowTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
 
@@ -582,7 +588,6 @@
 
             const updatedAgoEl = document.getElementById('updatedAgo');
 
-            // Если parsedDate существует и совпадает по ДД.ММ.ГГГГ с today -> считаем разницу
             if (parsedDate) {
                 const sameDay = parsedDate.getDate() === now.getDate() && parsedDate.getMonth() === now.getMonth() && parsedDate.getFullYear() === now.getFullYear();
                 if (sameDay) {
@@ -592,19 +597,15 @@
                 }
             }
 
-            // иначе — показываем "Обновлено: —"
             updatedAgoEl.textContent = 'Обновлено: —';
         }
 
-        // инициализация
         document.getElementById('refreshBtn').addEventListener('click', () => loadDashboard(true));
 
         loadDashboard();
 
-        // автообновление (1 мин)
         setInterval(() => loadDashboard(), 60000);
 
-        // обновление секундной части в шапке
         setInterval(() => updateTopAndAgoDisplay(lastReportDate), 1000);
     </script>
 </body>
