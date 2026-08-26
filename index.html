@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="data.js"></script>
   <style>
     :root {
@@ -45,6 +46,8 @@
     }
 
     .filters {
+      position: relative;
+      z-index: 40;
       display: grid;
       gap: 14px;
       margin-bottom: 18px;
@@ -53,6 +56,11 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
       backdrop-filter: blur(10px);
+    }
+
+    .filters:has(.dd.open),
+    .filters:has(.dp.open) {
+      z-index: 80;
     }
 
     .presets {
@@ -93,10 +101,17 @@
       color: var(--accent);
     }
 
-    .chip.reset:hover {
+    .chip.reset:hover:not(:disabled) {
       background: var(--accent);
       color: #fff;
       border-color: var(--accent);
+    }
+
+    .chip.reset:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      background: #eef2f5;
+      color: var(--muted);
     }
 
     .chip.reset svg {
@@ -143,8 +158,9 @@
     .date-control:hover,
     .dd-trigger:hover { border-color: #b7c5d0; }
 
-    .date-control:focus-within,
+    .dp.open .date-control,
     .dd.open .dd-trigger,
+    .date-control:focus,
     .dd-trigger:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-soft);
@@ -175,44 +191,153 @@
 
     .dd.open .dd-trigger .dd-icon { transform: rotate(180deg); }
 
-    .date-control input[type="date"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-      cursor: pointer;
-      font: inherit;
-    }
+    .dd, .dp { position: relative; }
 
-    .dd { position: relative; }
-
-    .dd-menu {
+    .dd-menu,
+    .dp-pop {
       position: absolute;
-      z-index: 40;
+      z-index: 100;
       top: calc(100% + 6px);
       left: 0;
-      right: 0;
+      min-width: 100%;
       margin: 0;
-      padding: 6px;
-      list-style: none;
       background: #fff;
       border: 1px solid var(--line);
-      border-radius: 12px;
-      box-shadow: 0 12px 28px rgba(21, 32, 43, 0.12);
-      max-height: 240px;
-      overflow: auto;
+      border-radius: 14px;
+      box-shadow: 0 16px 36px rgba(21, 32, 43, 0.16);
       opacity: 0;
       visibility: hidden;
       transform: translateY(-4px);
       transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+      pointer-events: none;
     }
 
-    .dd.open .dd-menu {
+    .dd-menu {
+      right: 0;
+      padding: 6px;
+      list-style: none;
+      max-height: 240px;
+      overflow: auto;
+    }
+
+    .dp-pop {
+      width: 292px;
+      padding: 14px;
+    }
+
+    .dd.open .dd-menu,
+    .dp.open .dp-pop {
       opacity: 1;
       visibility: visible;
       transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .dp-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .dp-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+
+    .dp-nav {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      background: #f7fafb;
+      border-radius: 8px;
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-size: 18px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .dp-nav:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .dp-nav:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .dp-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      margin-bottom: 4px;
+    }
+
+    .dp-weekdays span {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 4px 0;
+    }
+
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .dp-day {
+      aspect-ratio: 1;
+      border: 0;
+      background: transparent;
+      border-radius: 9px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .dp-day:hover:not(:disabled):not(.selected) {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .dp-day.muted {
+      color: #a8b4bf;
+      font-weight: 500;
+    }
+
+    .dp-day.selected {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .dp-day.in-range:not(.selected) {
+      background: rgba(31, 111, 106, 0.12);
+      color: var(--accent);
+    }
+
+    .dp-day:disabled {
+      opacity: 0.28;
+      cursor: not-allowed;
+    }
+
+    .dp-day.today:not(.selected) {
+      box-shadow: inset 0 0 0 1.5px var(--accent);
     }
 
     .dd-option {
@@ -322,41 +447,6 @@
     .chart-box { position: relative; height: 320px; }
     .chart-box.sm { height: 260px; }
 
-    .share-wrap { position: relative; }
-
-    .share-center {
-      position: absolute;
-      inset: 18% 18% 28%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      pointer-events: none;
-      padding: 8px;
-    }
-
-    .share-center .name {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--ink);
-      line-height: 1.2;
-    }
-
-    .share-center .meta {
-      margin-top: 4px;
-      font-size: 11px;
-      color: var(--muted);
-      max-width: 14ch;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1.45fr 1fr;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
     .split {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -410,11 +500,38 @@
       font-size: 12px;
     }
 
+    .converter {
+      margin-top: 18px;
+    }
+
+    .converter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .converter-row input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    .converter-status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .converter-status.ok { color: var(--accent); font-weight: 600; }
+    .converter-status.err { color: var(--down); font-weight: 600; }
+
     @media (max-width: 860px) {
-      .filter-row, .kpis, .grid, .split { grid-template-columns: 1fr; }
+      .filter-row, .kpis, .split { grid-template-columns: 1fr; }
       .wrap { width: min(100% - 24px, 1120px); }
       .chart-box { height: 280px; }
-      .share-center { inset: 16% 16% 30%; }
     }
   </style>
 </head>
@@ -424,28 +541,34 @@
       <div class="presets" id="presets"></div>
       <div class="filter-row">
         <div class="field">
-          <label for="from">С даты</label>
-          <div class="date-control">
-            <span class="date-text" id="fromText">—</span>
-            <svg class="date-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            <input type="date" id="from" />
+          <label id="fromLabel">С даты</label>
+          <div class="dp" id="fromDp">
+            <button type="button" class="date-control" id="fromTrigger" aria-haspopup="dialog" aria-expanded="false" aria-labelledby="fromLabel">
+              <span class="date-text" id="fromText">—</span>
+              <svg class="date-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <div class="dp-pop" id="fromPop" role="dialog" aria-label="Календарь"></div>
           </div>
+          <input type="hidden" id="from" />
         </div>
         <div class="field">
-          <label for="to">По дату</label>
-          <div class="date-control">
-            <span class="date-text" id="toText">—</span>
-            <svg class="date-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            <input type="date" id="to" />
+          <label id="toLabel">По дату</label>
+          <div class="dp" id="toDp">
+            <button type="button" class="date-control" id="toTrigger" aria-haspopup="dialog" aria-expanded="false" aria-labelledby="toLabel">
+              <span class="date-text" id="toText">—</span>
+              <svg class="date-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <div class="dp-pop" id="toPop" role="dialog" aria-label="Календарь"></div>
           </div>
+          <input type="hidden" id="to" />
         </div>
         <div class="field">
           <label id="storeLabel">Магазин</label>
@@ -507,26 +630,16 @@
       </div>
     </article>
 
-    <section class="grid">
-      <article class="panel" style="margin-bottom:0">
-        <h2>Все месяцы подряд</h2>
-        <p class="sub">Лента времени: как шла выручка месяц за месяцем.</p>
-        <div class="chart-box sm"><canvas id="trendChart"></canvas></div>
-      </article>
-      <article class="panel" style="margin-bottom:0">
-        <h2 id="shareTitle">Доля магазинов</h2>
-        <p class="sub" id="shareSub">Внешнее кольцо — магазины. Наведите — внутри появятся отделы.</p>
-        <div class="share-wrap">
-          <div class="chart-box sm"><canvas id="shareChart"></canvas></div>
-          <div class="share-center" id="shareCenter"></div>
-        </div>
-      </article>
-    </section>
+    <article class="panel">
+      <h2>Все месяцы подряд</h2>
+      <p class="sub">Лента времени: как шла выручка месяц за месяцем.</p>
+      <div class="chart-box sm"><canvas id="trendChart"></canvas></div>
+    </article>
 
     <section class="split" style="margin-top:12px">
       <article class="panel" style="margin-bottom:0">
         <h2>Сравнение магазинов</h2>
-        <p class="sub">Сколько всего заработали за выбранные даты.</p>
+        <p class="sub">Сколько всего заработали за выбранные даты. Сегменты показывают отделы.</p>
         <div class="chart-box sm"><canvas id="storeChart"></canvas></div>
       </article>
       <article class="panel" style="margin-bottom:0">
@@ -548,30 +661,51 @@
       </article>
     </section>
 
+    <section class="panel converter" aria-label="Конвертер данных">
+      <h2>Обновить данные из Excel</h2>
+      <p class="sub">Загрузите <code>Список.xls</code> — страница соберёт тот же формат, что и <code>data.js</code>, применит его сразу и даст скачать файл.</p>
+      <div class="converter-row">
+        <input type="file" id="xlsFile" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        <button type="button" class="chip" id="pickXls">Выбрать Список.xls</button>
+        <button type="button" class="chip reset" id="downloadDataJs" disabled>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 4v10m0 0l-4-4m4 4l4-4M5 18h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Скачать data.js
+        </button>
+      </div>
+      <div class="converter-status" id="convertStatus">Ожидаемые колонки: дата, магазин, ККМ/отдел, выручка, возвраты.</div>
+    </section>
+
     <footer id="footnote"></footer>
   </div>
 
   <script>
-    const DATA = window.SALES_DATA;
+    let DATA = window.SALES_DATA;
     const STORE_COLORS = ["#1f6f6a", "#3b6ea5", "#c27a3a", "#6b5b95"];
     const DEPT_COLORS = ["#1f6f6a", "#3b6ea5", "#c27a3a", "#6b5b95", "#7a9e7e", "#b08d57"];
     const YEAR_COLORS = { 2024: "#8aa3b5", 2025: "#1f6f6a", 2026: "#c27a3a" };
     const MONTHS_RU = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 
-    // Реальные отделы магазина (без «Основной», если это единственная «касса»)
-    const STORE_DEPTS = DATA.stores.map((_, si) => {
-      const found = new Set();
-      for (const row of DATA.rows) {
-        if (row[1] === si) found.add(row[2]);
-      }
-      const all = [...found];
-      const real = all.filter((di) => DATA.depts[di] !== "Основной");
-      return real.length ? real.sort((a, b) => DATA.depts[a].localeCompare(DATA.depts[b], "ru")) : [];
-    });
+    let STORE_DEPTS = [];
+    let ALL_REAL_DEPTS = [];
 
-    const ALL_REAL_DEPTS = [...new Set(STORE_DEPTS.flat())]
-      .sort((a, b) => DATA.depts[a].localeCompare(DATA.depts[b], "ru"));
+    function rebuildDerived() {
+      STORE_DEPTS = DATA.stores.map((_, si) => {
+        const found = new Set();
+        for (const row of DATA.rows) {
+          if (row[1] === si) found.add(row[2]);
+        }
+        const all = [...found];
+        const real = all.filter((di) => DATA.depts[di] !== "Основной");
+        return real.length ? real.sort((a, b) => DATA.depts[a].localeCompare(DATA.depts[b], "ru")) : [];
+      });
+      ALL_REAL_DEPTS = [...new Set(STORE_DEPTS.flat())]
+        .sort((a, b) => DATA.depts[a].localeCompare(DATA.depts[b], "ru"));
+    }
+
+    rebuildDerived();
 
     const el = (id) => document.getElementById(id);
     const fromEl = el("from");
@@ -583,13 +717,21 @@
     const deptTrigger = el("deptTrigger");
     const storeMenu = el("storeMenu");
     const deptMenu = el("deptMenu");
+    const fromDp = el("fromDp");
+    const toDp = el("toDp");
+    const fromPop = el("fromPop");
+    const toPop = el("toPop");
+    const fromTrigger = el("fromTrigger");
+    const toTrigger = el("toTrigger");
 
     let storeValue = "all";
     let deptValue = "all";
     let activePreset = "all";
-    let yoyChart, trendChart, shareChart, storeChart;
-    let activeShareStore = null;
-    let shareMode = "stores";
+    let yoyChart, trendChart, storeChart;
+    let fromView = null;
+    let toView = null;
+    let uiBound = false;
+    let lastPayload = null;
 
     function fmt(n) {
       const abs = Math.abs(Math.round(n));
@@ -625,6 +767,24 @@
       return `${Number(d)} ${MONTHS_SHORT[Number(m) - 1]} ${y}`;
     }
 
+    function parseISO(iso) {
+      const [y, m, d] = iso.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function toISO(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function clampISO(iso, min, max) {
+      if (iso < min) return min;
+      if (iso > max) return max;
+      return iso;
+    }
+
     function syncDateTexts() {
       el("fromText").textContent = formatRuDate(fromEl.value);
       el("toText").textContent = formatRuDate(toEl.value);
@@ -635,21 +795,110 @@
       return [...ys].sort();
     }
 
-    function closeAllDropdowns() {
-      [storeDd, deptDd].forEach((dd) => {
-        dd.classList.remove("open");
-        const btn = dd.querySelector(".dd-trigger");
+    function closeAllMenus() {
+      [storeDd, deptDd, fromDp, toDp].forEach((node) => {
+        if (!node) return;
+        node.classList.remove("open");
+        const btn = node.querySelector("button");
         if (btn) btn.setAttribute("aria-expanded", "false");
       });
     }
 
-    function toggleDropdown(dd) {
-      const willOpen = !dd.classList.contains("open");
-      closeAllDropdowns();
+    function toggleMenu(node) {
+      const willOpen = !node.classList.contains("open");
+      closeAllMenus();
       if (willOpen) {
-        dd.classList.add("open");
-        dd.querySelector(".dd-trigger").setAttribute("aria-expanded", "true");
+        node.classList.add("open");
+        const btn = node.querySelector("button");
+        if (btn) btn.setAttribute("aria-expanded", "true");
       }
+    }
+
+    function renderCalendar(which) {
+      const isFrom = which === "from";
+      const pop = isFrom ? fromPop : toPop;
+      const value = isFrom ? fromEl.value : toEl.value;
+      let view = isFrom ? fromView : toView;
+      if (!view) {
+        const base = parseISO(value || DATA.from);
+        view = { y: base.getFullYear(), m: base.getMonth() };
+        if (isFrom) fromView = view; else toView = view;
+      }
+
+      const min = DATA.from;
+      const max = DATA.to;
+      const minDate = parseISO(min);
+      const maxDate = parseISO(max);
+      const first = new Date(view.y, view.m, 1);
+      const startPad = (first.getDay() + 6) % 7; // Monday-first
+      const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+      const prevDays = new Date(view.y, view.m, 0).getDate();
+
+      const canPrev = new Date(view.y, view.m, 1) > new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+      const canNext = new Date(view.y, view.m, 1) < new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+
+      const weekday = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
+      const cells = [];
+      for (let i = 0; i < 42; i++) {
+        let y = view.y, m = view.m, d, muted = false;
+        if (i < startPad) {
+          d = prevDays - startPad + i + 1;
+          m = view.m - 1;
+          if (m < 0) { m = 11; y -= 1; }
+          muted = true;
+        } else if (i >= startPad + daysInMonth) {
+          d = i - startPad - daysInMonth + 1;
+          m = view.m + 1;
+          if (m > 11) { m = 0; y += 1; }
+          muted = true;
+        } else {
+          d = i - startPad + 1;
+        }
+        const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const disabled = iso < min || iso > max;
+        const selected = iso === value;
+        const inRange = iso >= fromEl.value && iso <= toEl.value;
+        const today = iso === toISO(new Date());
+        cells.push(`<button type="button" class="dp-day${muted ? " muted" : ""}${selected ? " selected" : ""}${inRange ? " in-range" : ""}${today ? " today" : ""}" data-iso="${iso}" ${disabled ? "disabled" : ""}>${d}</button>`);
+      }
+
+      pop.innerHTML = `
+        <div class="dp-head">
+          <button type="button" class="dp-nav" data-nav="-1" ${canPrev ? "" : "disabled"} aria-label="Предыдущий месяц">‹</button>
+          <div class="dp-title">${MONTHS_RU[view.m]} ${view.y}</div>
+          <button type="button" class="dp-nav" data-nav="1" ${canNext ? "" : "disabled"} aria-label="Следующий месяц">›</button>
+        </div>
+        <div class="dp-weekdays">${weekday.map((w) => `<span>${w}</span>`).join("")}</div>
+        <div class="dp-grid">${cells.join("")}</div>
+      `;
+    }
+
+    function openDatePicker(which) {
+      closeAllMenus();
+      const node = which === "from" ? fromDp : toDp;
+      const value = which === "from" ? fromEl.value : toEl.value;
+      const base = parseISO(value || DATA.from);
+      const view = { y: base.getFullYear(), m: base.getMonth() };
+      if (which === "from") fromView = view; else toView = view;
+      renderCalendar(which);
+      node.classList.add("open");
+      node.querySelector("button").setAttribute("aria-expanded", "true");
+    }
+
+    function setDateValue(which, iso, { markCustom = true } = {}) {
+      iso = clampISO(iso, DATA.from, DATA.to);
+      if (which === "from") {
+        fromEl.value = iso;
+        if (toEl.value && fromEl.value > toEl.value) toEl.value = fromEl.value;
+      } else {
+        toEl.value = iso;
+        if (fromEl.value && toEl.value < fromEl.value) fromEl.value = toEl.value;
+      }
+      syncDateTexts();
+      if (markCustom) markCustomPreset();
+      renderCalendar("from");
+      renderCalendar("to");
+      render();
     }
 
     function deptsForStoreFilter() {
@@ -723,45 +972,41 @@
     function resetAllFilters() {
       storeValue = "all";
       deptValue = "all";
-      activeShareStore = null;
       fromEl.value = DATA.from;
       toEl.value = DATA.to;
+      fromView = null;
+      toView = null;
       syncDateTexts();
       setPresetActive("all");
       renderStoreMenu();
       refreshDeptSelect();
-      closeAllDropdowns();
+      closeAllMenus();
       render();
     }
 
-    function updateResetVisibility() {
-      const dirty =
+    function filtersAreDirty() {
+      return (
         storeValue !== "all" ||
         deptValue !== "all" ||
         fromEl.value !== DATA.from ||
         toEl.value !== DATA.to ||
-        activePreset !== "all";
-      const btn = el("resetFilters");
-      if (btn) btn.hidden = !dirty;
+        activePreset !== "all"
+      );
     }
 
-    function fillControls() {
-      fromEl.min = DATA.from;
-      fromEl.max = DATA.to;
-      toEl.min = DATA.from;
-      toEl.max = DATA.to;
-      fromEl.value = DATA.from;
-      toEl.value = DATA.to;
-      syncDateTexts();
-      renderStoreMenu();
-      refreshDeptSelect();
+    function updateResetVisibility() {
+      const btn = el("resetFilters");
+      if (!btn) return;
+      btn.disabled = !filtersAreDirty();
+    }
 
+    function syncPresetsBar() {
       const years = yearsInData();
       el("presets").innerHTML = [
-        `<button type="button" class="chip active" data-preset="all">Весь период</button>`,
-        ...years.map((y) => `<button type="button" class="chip" data-preset="${y}">${y}</button>`),
+        `<button type="button" class="chip${activePreset === "all" ? " active" : ""}" data-preset="all">Весь период</button>`,
+        ...years.map((y) => `<button type="button" class="chip${activePreset === String(y) ? " active" : ""}" data-preset="${y}">${y}</button>`),
         `<span class="presets-spacer"></span>`,
-        `<button type="button" class="chip reset" id="resetFilters" hidden>
+        `<button type="button" class="chip reset" id="resetFilters" ${filtersAreDirty() ? "" : "disabled"}>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             <path d="M18 4v4h-4M6 20v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -769,9 +1014,27 @@
           Сбросить фильтры
         </button>`,
       ].join("");
+    }
+
+    function syncFilterControls() {
+      fromEl.value = DATA.from;
+      toEl.value = DATA.to;
+      fromView = null;
+      toView = null;
+      syncDateTexts();
+      renderStoreMenu();
+      refreshDeptSelect();
+      syncPresetsBar();
+    }
+
+    function fillControls() {
+      syncFilterControls();
+      if (uiBound) return;
+      uiBound = true;
 
       el("presets").addEventListener("click", (e) => {
         if (e.target.closest("#resetFilters")) {
+          if (!filtersAreDirty()) return;
           resetAllFilters();
           return;
         }
@@ -788,17 +1051,66 @@
           fromEl.value = start < DATA.from ? DATA.from : start;
           toEl.value = end > DATA.to ? DATA.to : end;
         }
+        fromView = null;
+        toView = null;
         syncDateTexts();
         render();
       });
 
       storeTrigger.addEventListener("click", (e) => {
         e.stopPropagation();
-        toggleDropdown(storeDd);
+        toggleMenu(storeDd);
       });
       deptTrigger.addEventListener("click", (e) => {
         e.stopPropagation();
-        toggleDropdown(deptDd);
+        toggleMenu(deptDd);
+      });
+
+      fromTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (fromDp.classList.contains("open")) closeAllMenus();
+        else openDatePicker("from");
+      });
+      toTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (toDp.classList.contains("open")) closeAllMenus();
+        else openDatePicker("to");
+      });
+
+      fromPop.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const nav = e.target.closest("[data-nav]");
+        if (nav && !nav.disabled) {
+          const dir = Number(nav.dataset.nav);
+          fromView = fromView || { y: parseISO(fromEl.value).getFullYear(), m: parseISO(fromEl.value).getMonth() };
+          fromView.m += dir;
+          if (fromView.m > 11) { fromView.m = 0; fromView.y += 1; }
+          if (fromView.m < 0) { fromView.m = 11; fromView.y -= 1; }
+          renderCalendar("from");
+          return;
+        }
+        const day = e.target.closest("[data-iso]");
+        if (!day || day.disabled) return;
+        setDateValue("from", day.dataset.iso);
+        closeAllMenus();
+      });
+
+      toPop.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const nav = e.target.closest("[data-nav]");
+        if (nav && !nav.disabled) {
+          const dir = Number(nav.dataset.nav);
+          toView = toView || { y: parseISO(toEl.value).getFullYear(), m: parseISO(toEl.value).getMonth() };
+          toView.m += dir;
+          if (toView.m > 11) { toView.m = 0; toView.y += 1; }
+          if (toView.m < 0) { toView.m = 11; toView.y -= 1; }
+          renderCalendar("to");
+          return;
+        }
+        const day = e.target.closest("[data-iso]");
+        if (!day || day.disabled) return;
+        setDateValue("to", day.dataset.iso);
+        closeAllMenus();
       });
 
       storeMenu.addEventListener("click", (e) => {
@@ -806,10 +1118,9 @@
         if (!opt) return;
         storeValue = opt.dataset.value;
         deptValue = "all";
-        activeShareStore = storeValue === "all" ? activeShareStore : Number(storeValue);
         renderStoreMenu();
         refreshDeptSelect();
-        closeAllDropdowns();
+        closeAllMenus();
         render();
       });
 
@@ -818,16 +1129,20 @@
         if (!opt) return;
         deptValue = opt.dataset.value;
         refreshDeptSelect();
-        closeAllDropdowns();
+        closeAllMenus();
         render();
       });
 
       document.addEventListener("click", (e) => {
-        if (!e.target.closest(".dd")) closeAllDropdowns();
+        if (!e.target.closest(".dd") && !e.target.closest(".dp")) closeAllMenus();
       });
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeAllDropdowns();
+        if (e.key === "Escape") closeAllMenus();
       });
+
+      el("pickXls").addEventListener("click", () => el("xlsFile").click());
+      el("xlsFile").addEventListener("change", onXlsPicked);
+      el("downloadDataJs").addEventListener("click", downloadDataJs);
     }
 
     function markCustomPreset() {
@@ -995,214 +1310,66 @@
         },
       });
 
-      shareChart = new Chart(el("shareChart"), {
-        type: "doughnut",
-        data: { labels: [], datasets: [] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "48%",
-          plugins: {
-            legend: {
-              position: "bottom",
-              labels: {
-                boxWidth: 10,
-                usePointStyle: true,
-                pointStyle: "circle",
-                filter: (item, chart) => {
-                  // В режиме двух колец легенда только по внешнему (магазины)
-                  if (chart.data.datasets.length > 1) return item.datasetIndex === 1;
-                  return true;
-                },
-              },
-            },
-            tooltip: {
-              callbacks: {
-                title: (items) => {
-                  const item = items[0];
-                  if (!item) return "";
-                  const meta = shareChart._meta;
-                  if (!meta) return item.label || "";
-                  if (meta.mode === "nested") {
-                    if (item.datasetIndex === 1) return DATA.stores[meta.storeIndexes[item.dataIndex]];
-                    return meta.deptLabels[item.dataIndex] || "";
-                  }
-                  return item.label || "";
-                },
-                label: (ctx) => {
-                  const sum = ctx.dataset.data.reduce((a, b) => a + (b || 0), 0) || 1;
-                  const pct = ((ctx.parsed / sum) * 100).toFixed(1).replace(".", ",");
-                  return ` ${fmt(ctx.parsed)} · ${pct}%`;
-                },
-              },
-            },
-          },
-          onHover: (evt, elements) => {
-            const canvas = evt.native?.target;
-            if (canvas) canvas.style.cursor = elements.length ? "pointer" : "default";
-            if (shareMode !== "stores" || !elements.length) return;
-            const outer = elements.find((e) => e.datasetIndex === 1);
-            if (!outer) return;
-            const si = shareChart._meta.storeIndexes[outer.index];
-            if (si !== activeShareStore) {
-              activeShareStore = si;
-              updateInnerRing(si);
-            }
-          },
-        },
-      });
-
       storeChart = new Chart(el("storeChart"), {
         type: "bar",
-        data: { labels: [], datasets: [{ data: [], backgroundColor: STORE_COLORS, borderRadius: 6, maxBarThickness: 36 }] },
+        data: { labels: [], datasets: [] },
         options: {
           indexAxis: "y",
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: (ctx) => " " + fmt(ctx.parsed.x) } },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const item = items[0];
+                  if (!item) return "";
+                  const meta = item.dataset.deptMeta ? item.dataset.deptMeta[item.dataIndex] : null;
+                  if (meta) {
+                    return meta.isOnly ? meta.storeName : `${meta.storeName} · ${meta.deptName}`;
+                  }
+                  return item.label || "";
+                },
+                label: (ctx) => {
+                  const meta = ctx.dataset.deptMeta ? ctx.dataset.deptMeta[ctx.dataIndex] : null;
+                  const val = ctx.parsed.x;
+                  if (!val) return "";
+                  if (meta) {
+                    if (meta.isOnly) {
+                      return ` Выручка: ${fmt(val)}`;
+                    } else {
+                      const pct = ((val / (meta.storeTotal || 1)) * 100).toFixed(1).replace(".", ",");
+                      return ` Отдел: ${fmt(val)} (${pct}% от магазина)`;
+                    }
+                  }
+                  return ` Выручка: ${fmt(val)}`;
+                },
+                afterBody: (items) => {
+                  const item = items[0];
+                  if (!item) return [];
+                  const meta = item.dataset.deptMeta ? item.dataset.deptMeta[item.dataIndex] : null;
+                  if (meta && !meta.isOnly) {
+                    return [` Всего по магазину: ${fmt(meta.storeTotal)}`];
+                  }
+                  return [];
+                },
+              },
+            },
           },
           scales: {
             x: {
+              stacked: true,
               grid: { color: "#e6edf2" },
               border: { display: false },
               ticks: { callback: (v) => fmtShort(v).replace(" ₸", "") },
             },
-            y: { grid: { display: false } },
+            y: {
+              stacked: true,
+              grid: { display: false },
+            },
           },
         },
       });
-    }
-
-    function setShareCenter(name, meta) {
-      el("shareCenter").innerHTML = name
-        ? `<div class="name">${name}</div><div class="meta">${meta || ""}</div>`
-        : "";
-    }
-
-    function updateInnerRing(si) {
-      const stats = window.__lastStats;
-      if (!stats || !shareChart._meta || shareChart._meta.mode !== "nested") return;
-
-      const base = STORE_COLORS[si % STORE_COLORS.length];
-      const depts = storeDeptRows(stats, si);
-      const storeTotal = stats.storeStats.find((s) => s.si === si)?.total || 0;
-
-      if (!depts.length) {
-        shareChart.data.datasets[0].data = [storeTotal || 1];
-        shareChart.data.datasets[0].backgroundColor = [shade(base, 0.35)];
-        shareChart._meta.deptLabels = ["Без отделов"];
-        setShareCenter(DATA.stores[si], "без отделов");
-      } else {
-        shareChart.data.datasets[0].data = depts.map((d) => d.value);
-        shareChart.data.datasets[0].backgroundColor = depts.map((_, i) => shade(base, 0.15 + i * 0.18));
-        shareChart._meta.deptLabels = depts.map((d) => d.name);
-        setShareCenter(DATA.stores[si], depts.map((d) => d.name).join(" · "));
-      }
-      shareChart.update("none");
-    }
-
-    function renderShare(stats) {
-      const storeStats = stats.storeStats.filter((s) => s.total > 0);
-      const selected = storeValue;
-
-      if (selected !== "all") {
-        const si = Number(selected);
-        const depts = storeDeptRows(stats, si);
-        const storeName = DATA.stores[si];
-        shareMode = "depts";
-
-        if (!depts.length) {
-          el("shareTitle").textContent = "Доля · " + storeName;
-          el("shareSub").textContent = "У этого магазина нет отдельных отделов.";
-          shareChart.data.labels = [storeName];
-          shareChart.data.datasets = [{
-            data: [storeStats.find((s) => s.si === si)?.total || 0],
-            backgroundColor: [STORE_COLORS[si % STORE_COLORS.length]],
-            borderWidth: 0,
-            hoverOffset: 4,
-          }];
-          shareChart._meta = { mode: "single" };
-          setShareCenter(storeName, "весь магазин");
-          shareChart.update();
-          return;
-        }
-
-        el("shareTitle").textContent = "Доля отделов · " + storeName;
-        el("shareSub").textContent = "Как выручка делится по отделам этого магазина.";
-        shareChart.data.labels = depts.map((d) => d.name);
-        shareChart.data.datasets = [{
-          data: depts.map((d) => d.value),
-          backgroundColor: depts.map((_, i) => DEPT_COLORS[i % DEPT_COLORS.length]),
-          borderWidth: 0,
-          hoverOffset: 6,
-        }];
-        shareChart._meta = { mode: "depts" };
-        setShareCenter(storeName, depts.length + " отдела");
-        shareChart.update();
-        return;
-      }
-
-      // Все магазины: внешнее кольцо — магазины, внутреннее — отделы выбранного
-      shareMode = "stores";
-      el("shareTitle").textContent = "Доля магазинов";
-      el("shareSub").textContent = "Внешнее кольцо — магазины. Наведите — внутри появятся отделы.";
-
-      const pick = activeShareStore != null && storeStats.some((s) => s.si === activeShareStore)
-        ? activeShareStore
-        : storeStats[0]?.si;
-      activeShareStore = pick;
-
-      const storeIndexes = storeStats.map((s) => s.si);
-      const outerData = storeStats.map((s) => s.total);
-      const outerColors = storeStats.map((s) => STORE_COLORS[s.si % STORE_COLORS.length]);
-
-      const depts = pick == null ? [] : storeDeptRows(stats, pick);
-      const base = pick == null ? "#ccc" : STORE_COLORS[pick % STORE_COLORS.length];
-      let innerData, innerColors, deptLabels;
-      if (!depts.length) {
-        const total = storeStats.find((s) => s.si === pick)?.total || 1;
-        innerData = [total];
-        innerColors = [shade(base, 0.35)];
-        deptLabels = ["Без отделов"];
-      } else {
-        innerData = depts.map((d) => d.value);
-        innerColors = depts.map((_, i) => shade(base, 0.15 + i * 0.18));
-        deptLabels = depts.map((d) => d.name);
-      }
-
-      shareChart.data.labels = storeStats.map((s) => s.name);
-      shareChart.data.datasets = [
-        {
-          label: "Отделы",
-          data: innerData,
-          backgroundColor: innerColors,
-          borderWidth: 2,
-          borderColor: "#fff",
-          hoverOffset: 2,
-          weight: 0.85,
-        },
-        {
-          label: "Магазины",
-          data: outerData,
-          backgroundColor: outerColors,
-          borderWidth: 2,
-          borderColor: "#fff",
-          hoverOffset: 8,
-          weight: 1.15,
-        },
-      ];
-      shareChart._meta = { mode: "nested", storeIndexes, deptLabels };
-      if (pick != null) {
-        setShareCenter(
-          DATA.stores[pick],
-          depts.length ? depts.map((d) => d.name).join(" · ") : "без отделов"
-        );
-      } else {
-        setShareCenter("", "");
-      }
-      shareChart.update();
     }
 
     function renderYoy(stats) {
@@ -1268,12 +1435,57 @@
       trendChart.data.datasets[0].data = stats.monthKeys.map((k) => stats.byMonth.get(k));
       trendChart.update();
 
-      renderShare(stats);
-
       const storeStats = stats.storeStats.filter((s) => s.total > 0);
+      const storeDeptsMap = storeStats.map((s) => {
+        const depts = storeDeptRows(stats, s.si);
+        if (!depts.length) {
+          return { store: s, depts: [{ di: -1, name: "Основной", value: s.total }] };
+        }
+        return { store: s, depts };
+      });
+
+      const maxSegments = Math.max(1, ...storeDeptsMap.map((sd) => sd.depts.length));
+      const datasets = [];
+
+      for (let k = 0; k < maxSegments; k++) {
+        const data = [];
+        const bgColors = [];
+        const deptMeta = [];
+
+        storeDeptsMap.forEach((sd) => {
+          const d = sd.depts[k];
+          const baseColor = STORE_COLORS[sd.store.si % STORE_COLORS.length];
+          if (d && d.value > 0) {
+            data.push(d.value);
+            const tint = sd.depts.length === 1 ? 0 : 0.12 + k * 0.22;
+            bgColors.push(shade(baseColor, tint));
+            deptMeta.push({
+              deptName: d.name,
+              storeName: sd.store.name,
+              storeTotal: sd.store.total,
+              isOnly: sd.depts.length === 1,
+              value: d.value,
+            });
+          } else {
+            data.push(0);
+            bgColors.push("transparent");
+            deptMeta.push(null);
+          }
+        });
+
+        datasets.push({
+          label: `Сегмент ${k + 1}`,
+          data,
+          backgroundColor: bgColors,
+          deptMeta,
+          borderRadius: 4,
+          maxBarThickness: 36,
+          stack: "storeStack",
+        });
+      }
+
       storeChart.data.labels = storeStats.map((s) => s.name);
-      storeChart.data.datasets[0].data = storeStats.map((s) => s.total);
-      storeChart.data.datasets[0].backgroundColor = storeStats.map((s) => STORE_COLORS[s.si % STORE_COLORS.length]);
+      storeChart.data.datasets = datasets;
       storeChart.update();
 
       el("storeTable").innerHTML = storeStats.map((s) => `
@@ -1290,16 +1502,161 @@
       updateResetVisibility();
     }
 
-    fillControls();
-    [fromEl, toEl].forEach((node) => node.addEventListener("change", () => {
-      if (fromEl.value > toEl.value) {
-        if (node === fromEl) toEl.value = fromEl.value;
-        else fromEl.value = toEl.value;
+    function destroyCharts() {
+      [yoyChart, trendChart, storeChart].forEach((chart) => {
+        try { chart && chart.destroy(); } catch (_) {}
+      });
+      yoyChart = trendChart = storeChart = null;
+    }
+
+    function setConvertStatus(text, kind) {
+      const node = el("convertStatus");
+      node.textContent = text;
+      node.classList.remove("ok", "err");
+      if (kind) node.classList.add(kind);
+    }
+
+    function parseExcelDate(value) {
+      if (value == null || value === "") return null;
+      if (value instanceof Date && !isNaN(value)) return toISO(value);
+      if (typeof value === "number" && window.XLSX?.SSF) {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (parsed) {
+          return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
+        }
       }
-      syncDateTexts();
-      markCustomPreset();
+      const s = String(value).trim();
+      const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+      if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+      const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+      return null;
+    }
+
+    function deptFromKkm(store, kkm) {
+      let name = String(kkm || "").trim();
+      if (store && name.startsWith(store)) name = name.slice(store.length).trim();
+      name = name.replace(/\d+$/, "").trim();
+      return name || "Основной";
+    }
+
+    function numCell(v) {
+      if (v == null || v === "") return 0;
+      if (typeof v === "number") return v;
+      const n = Number(String(v).replace(/\s/g, "").replace(",", "."));
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function convertSheetToSalesData(workbook) {
+      const sheetName = workbook.SheetNames.includes("TDSheet")
+        ? "TDSheet"
+        : workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) throw new Error("В файле нет листа с данными");
+      const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true });
+      if (!aoa.length) throw new Error("Пустой файл");
+
+      const agg = new Map();
+      let used = 0;
+      for (let r = 1; r < aoa.length; r++) {
+        const row = aoa[r] || [];
+        const date = parseExcelDate(row[0]);
+        const store = String(row[1] ?? "").trim();
+        if (!date || !store) continue;
+        const dep = deptFromKkm(store, row[2]);
+        const rev = numCell(row[3]);
+        const ret = numCell(row[4]);
+        const key = date + "\0" + store + "\0" + dep;
+        const cur = agg.get(key) || { rev: 0, ret: 0 };
+        cur.rev += rev;
+        cur.ret += ret;
+        agg.set(key, cur);
+        used += 1;
+      }
+      if (!used) throw new Error("Не удалось прочитать строки. Нужны колонки: дата, магазин, ККМ, выручка, возвраты.");
+
+      const storeSet = new Set();
+      const deptSet = new Set();
+      for (const key of agg.keys()) {
+        const [, store, dep] = key.split("\0");
+        storeSet.add(store);
+        deptSet.add(dep);
+      }
+      const stores = [...storeSet].sort((a, b) => a.localeCompare(b, "ru"));
+      const depts = [...deptSet].sort((a, b) => a.localeCompare(b, "ru"));
+      const si = Object.fromEntries(stores.map((s, i) => [s, i]));
+      const di = Object.fromEntries(depts.map((d, i) => [d, i]));
+
+      const rows = [];
+      for (const [key, v] of [...agg.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        const [date, store, dep] = key.split("\0");
+        const net = Math.round(v.rev - v.ret);
+        if (net === 0 && v.rev === 0 && v.ret === 0) continue;
+        rows.push([date, si[store], di[dep], net]);
+      }
+      if (!rows.length) throw new Error("После обработки не осталось данных");
+
+      return {
+        stores,
+        depts,
+        from: rows[0][0],
+        to: rows[rows.length - 1][0],
+        rows,
+      };
+    }
+
+    function applySalesData(payload) {
+      DATA = payload;
+      window.SALES_DATA = payload;
+      lastPayload = payload;
+      rebuildDerived();
+      destroyCharts();
+      storeValue = "all";
+      deptValue = "all";
+      activePreset = "all";
+      closeAllMenus();
+      syncFilterControls();
+      el("downloadDataJs").disabled = false;
       render();
-    }));
+    }
+
+    function downloadDataJs() {
+      const payload = lastPayload || DATA;
+      const text = "window.SALES_DATA = " + JSON.stringify(payload) + ";\n";
+      const blob = new Blob([text], { type: "text/javascript;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "data.js";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function onXlsPicked(e) {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      if (typeof XLSX === "undefined") {
+        setConvertStatus("Не загрузилась библиотека Excel. Проверьте интернет.", "err");
+        return;
+      }
+      setConvertStatus("Читаю «" + file.name + "»…");
+      try {
+        const buf = await file.arrayBuffer();
+        const workbook = XLSX.read(buf, { type: "array", cellDates: true });
+        const payload = convertSheetToSalesData(workbook);
+        applySalesData(payload);
+        setConvertStatus(
+          `Готово: ${payload.stores.length} магазина, ${payload.rows.length} строк, ${payload.from} — ${payload.to}. Данные применены на странице.`,
+          "ok"
+        );
+      } catch (err) {
+        console.error(err);
+        setConvertStatus(err.message || String(err), "err");
+      }
+    }
+
+    fillControls();
     render();
   </script>
 </body>
