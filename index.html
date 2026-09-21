@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="data.js"></script>
+  <script src="cheki.js"></script>
   <style>
     :root {
       --bg0: #e8eef2;
@@ -128,6 +129,7 @@
 
     .field { display: grid; gap: 6px; }
     .field.hidden { display: none; }
+    .hidden { display: none !important; }
 
     .field label {
       font-size: 11px;
@@ -376,6 +378,15 @@
       grid-template-columns: 1.35fr 1fr 1fr;
       gap: 12px;
       margin-bottom: 12px;
+    }
+
+    .kpis.multi { grid-template-columns: repeat(4, 1fr); }
+
+    h3.sub-mini {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
     }
 
     .kpi {
@@ -636,6 +647,65 @@
       <div class="chart-box sm"><canvas id="trendChart"></canvas></div>
     </article>
 
+    <section class="panel" id="chekiPanel" aria-label="Аналитика по чекам">
+      <h2>Чеки</h2>
+      <p class="sub">Разбивка продаж по чекам: по часам дня и по месяцам. Действуют фильтры по датам, магазину и отделу из шапки.</p>
+      <div class="kpis multi">
+        <article class="kpi main">
+          <div class="label">Чеков продаж</div>
+          <div class="value" id="chekiKpiCnt">—</div>
+          <div class="hint" id="chekiKpiPeriod">—</div>
+        </article>
+        <article class="kpi">
+          <div class="label">Средний чек</div>
+          <div class="value" id="chekiKpiAvg">—</div>
+          <div class="hint">Выручка ÷ число чеков</div>
+        </article>
+        <article class="kpi">
+          <div class="label">Выручка по чекам</div>
+          <div class="value" id="chekiKpiRev">—</div>
+          <div class="hint">Сумма чеков продажи</div>
+        </article>
+        <article class="kpi">
+          <div class="label">Возвраты</div>
+          <div class="value" id="chekiKpiRet">—</div>
+          <div class="hint" id="chekiKpiRetCnt">—</div>
+        </article>
+      </div>
+      <h3 class="sub-mini">Чеки по часам дня</h3>
+      <div class="chart-box sm" style="height:280px"><canvas id="chekiHourChart"></canvas></div>
+      <div style="overflow-x:auto; margin-top:6px">
+        <table>
+          <thead>
+            <tr><th>Час</th><th class="num">Чеков</th><th class="num">Выручка</th><th class="num">Средний чек</th></tr>
+          </thead>
+          <tbody id="chekiHourBody"></tbody>
+        </table>
+      </div>
+      <h3 class="sub-mini" style="margin-top:20px">Чеки по месяцам</h3>
+      <div class="chart-box"><canvas id="chekiMonthChart"></canvas></div>
+      <div class="split" style="margin-top:14px">
+        <div class="panel" style="margin-bottom:0">
+          <h3 class="sub-mini">По магазинам</h3>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Магазин</th><th class="num">Чеков</th><th class="num">Выручка</th><th class="num">Средний чек</th></tr></thead>
+              <tbody id="chekiStoreBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel" style="margin-bottom:0">
+          <h3 class="sub-mini">По отделам</h3>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Отдел</th><th class="num">Чеков</th><th class="num">Выручка</th><th class="num">Средний чек</th></tr></thead>
+              <tbody id="chekiDeptBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="split" style="margin-top:12px">
       <article class="panel" style="margin-bottom:0">
         <h2>Сравнение магазинов</h2>
@@ -663,7 +733,7 @@
 
     <section class="panel converter" aria-label="Конвертер данных">
       <h2>Обновить данные из Excel</h2>
-      <p class="sub">Загрузите <code>Список.xls</code> — страница соберёт тот же формат, что и <code>data.js</code>, применит его сразу и даст скачать файл.</p>
+      <p class="sub">Загрузите <code>Список.xls</code> — страница соберёт тот же формат, что и <code>data.js</code>, применит его сразу и даст скачать файл. Чеки из <code>Список.htm</code> обновляются в файле <code>cheki.js</code> отдельно (файл слишком большой для браузера).</p>
       <div class="converter-row">
         <input type="file" id="xlsFile" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
         <button type="button" class="chip" id="pickXls">Выбрать Список.xls</button>
@@ -682,6 +752,16 @@
 
   <script>
     let DATA = window.SALES_DATA;
+    const CHEKI = window.CHEKI_DATA || null;
+
+    function rangeFrom() {
+      return CHEKI ? (DATA.from < CHEKI.from ? DATA.from : CHEKI.from) : DATA.from;
+    }
+
+    function rangeTo() {
+      return CHEKI ? (DATA.to > CHEKI.to ? DATA.to : CHEKI.to) : DATA.to;
+    }
+
     const STORE_COLORS = ["#1f6f6a", "#3b6ea5", "#c27a3a", "#6b5b95"];
     const DEPT_COLORS = ["#1f6f6a", "#3b6ea5", "#c27a3a", "#6b5b95", "#7a9e7e", "#b08d57"];
     const YEAR_COLORS = { 2024: "#8aa3b5", 2025: "#1f6f6a", 2026: "#c27a3a" };
@@ -690,6 +770,18 @@
 
     let STORE_DEPTS = [];
     let ALL_REAL_DEPTS = [];
+    let CHEKI_SI = [];
+    let CHEKI_DI = [];
+
+    function rebuildChekiIndex() {
+      if (!CHEKI) {
+        CHEKI_SI = [];
+        CHEKI_DI = [];
+        return;
+      }
+      CHEKI_SI = CHEKI.stores.map((name) => DATA.stores.indexOf(name));
+      CHEKI_DI = CHEKI.depts.map((name) => DATA.depts.indexOf(name));
+    }
 
     function rebuildDerived() {
       STORE_DEPTS = DATA.stores.map((_, si) => {
@@ -706,6 +798,7 @@
     }
 
     rebuildDerived();
+    rebuildChekiIndex();
 
     const el = (id) => document.getElementById(id);
     const fromEl = el("from");
@@ -727,7 +820,7 @@
     let storeValue = "all";
     let deptValue = "all";
     let activePreset = "all";
-    let yoyChart, trendChart, storeChart;
+    let yoyChart, trendChart, storeChart, chekiHourChart, chekiMonthChart;
     let fromView = null;
     let toView = null;
     let uiBound = false;
@@ -820,13 +913,13 @@
       const value = isFrom ? fromEl.value : toEl.value;
       let view = isFrom ? fromView : toView;
       if (!view) {
-        const base = parseISO(value || DATA.from);
+        const base = parseISO(value || rangeFrom());
         view = { y: base.getFullYear(), m: base.getMonth() };
         if (isFrom) fromView = view; else toView = view;
       }
 
-      const min = DATA.from;
-      const max = DATA.to;
+      const min = rangeFrom();
+      const max = rangeTo();
       const minDate = parseISO(min);
       const maxDate = parseISO(max);
       const first = new Date(view.y, view.m, 1);
@@ -877,7 +970,7 @@
       closeAllMenus();
       const node = which === "from" ? fromDp : toDp;
       const value = which === "from" ? fromEl.value : toEl.value;
-      const base = parseISO(value || DATA.from);
+      const base = parseISO(value || rangeFrom());
       const view = { y: base.getFullYear(), m: base.getMonth() };
       if (which === "from") fromView = view; else toView = view;
       renderCalendar(which);
@@ -886,7 +979,7 @@
     }
 
     function setDateValue(which, iso, { markCustom = true } = {}) {
-      iso = clampISO(iso, DATA.from, DATA.to);
+      iso = clampISO(iso, rangeFrom(), rangeTo());
       if (which === "from") {
         fromEl.value = iso;
         if (toEl.value && fromEl.value > toEl.value) toEl.value = fromEl.value;
@@ -972,8 +1065,8 @@
     function resetAllFilters() {
       storeValue = "all";
       deptValue = "all";
-      fromEl.value = DATA.from;
-      toEl.value = DATA.to;
+      fromEl.value = rangeFrom();
+      toEl.value = rangeTo();
       fromView = null;
       toView = null;
       syncDateTexts();
@@ -988,8 +1081,8 @@
       return (
         storeValue !== "all" ||
         deptValue !== "all" ||
-        fromEl.value !== DATA.from ||
-        toEl.value !== DATA.to ||
+        fromEl.value !== rangeFrom() ||
+        toEl.value !== rangeTo() ||
         activePreset !== "all"
       );
     }
@@ -1017,8 +1110,8 @@
     }
 
     function syncFilterControls() {
-      fromEl.value = DATA.from;
-      toEl.value = DATA.to;
+      fromEl.value = rangeFrom();
+      toEl.value = rangeTo();
       fromView = null;
       toView = null;
       syncDateTexts();
@@ -1042,14 +1135,14 @@
         if (!btn) return;
         setPresetActive(btn.dataset.preset);
         if (activePreset === "all") {
-          fromEl.value = DATA.from;
-          toEl.value = DATA.to;
+          fromEl.value = rangeFrom();
+          toEl.value = rangeTo();
         } else {
           const y = activePreset;
           const start = `${y}-01-01`;
           const end = `${y}-12-31`;
-          fromEl.value = start < DATA.from ? DATA.from : start;
-          toEl.value = end > DATA.to ? DATA.to : end;
+          fromEl.value = start < rangeFrom() ? rangeFrom() : start;
+          toEl.value = end > rangeTo() ? rangeTo() : end;
         }
         fromView = null;
         toView = null;
@@ -1370,6 +1463,130 @@
           },
         },
       });
+
+      chekiHourChart = new Chart(el("chekiHourChart"), {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              type: "bar",
+              label: "Чеков",
+              data: [],
+              backgroundColor: "rgba(31,111,106,0.55)",
+              borderRadius: 4,
+              maxBarThickness: 26,
+              yAxisID: "y",
+              order: 2,
+            },
+            {
+              type: "line",
+              label: "Средний чек",
+              data: [],
+              borderColor: "#c27a3a",
+              backgroundColor: "rgba(194,122,58,0.12)",
+              fill: false,
+              tension: 0.25,
+              pointRadius: 2,
+              pointHoverRadius: 5,
+              borderWidth: 2,
+              yAxisID: "y1",
+              order: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", align: "end", labels: { boxWidth: 12, usePointStyle: true, pointStyle: "rectRounded" } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.parsed.y;
+                  if (v == null) return "";
+                  return ctx.dataset.type === "line"
+                    ? ` ${ctx.dataset.label}: ${fmt(v)}`
+                    : ` ${ctx.dataset.label}: ${Math.round(v).toLocaleString("ru-RU")} шт`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxRotation: 0 } },
+            y: { grid: { color: "#e6edf2" }, border: { display: false }, title: { display: true, text: "Чеков" } },
+            y1: {
+              position: "right",
+              grid: { drawOnChartArea: false },
+              border: { display: false },
+              title: { display: true, text: "Средний чек" },
+              ticks: { callback: (v) => fmtShort(v).replace(" ₸", "") },
+            },
+          },
+        },
+      });
+
+      chekiMonthChart = new Chart(el("chekiMonthChart"), {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              type: "bar",
+              label: "Чеков",
+              data: [],
+              backgroundColor: "rgba(31,111,106,0.55)",
+              borderRadius: 4,
+              maxBarThickness: 26,
+              yAxisID: "y",
+              order: 2,
+            },
+            {
+              type: "line",
+              label: "Средний чек",
+              data: [],
+              borderColor: "#c27a3a",
+              backgroundColor: "rgba(194,122,58,0.12)",
+              fill: false,
+              tension: 0.25,
+              pointRadius: 2,
+              pointHoverRadius: 5,
+              borderWidth: 2,
+              yAxisID: "y1",
+              order: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", align: "end", labels: { boxWidth: 12, usePointStyle: true, pointStyle: "rectRounded" } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.parsed.y;
+                  if (v == null) return "";
+                  return ctx.dataset.type === "line"
+                    ? ` ${ctx.dataset.label}: ${fmt(v)}`
+                    : ` ${ctx.dataset.label}: ${Math.round(v).toLocaleString("ru-RU")} шт`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxRotation: 0 } },
+            y: { grid: { color: "#e6edf2" }, border: { display: false }, title: { display: true, text: "Чеков" } },
+            y1: {
+              position: "right",
+              grid: { drawOnChartArea: false },
+              border: { display: false },
+              title: { display: true, text: "Средний чек" },
+              ticks: { callback: (v) => fmtShort(v).replace(" ₸", "") },
+            },
+          },
+        },
+      });
     }
 
     function renderYoy(stats) {
@@ -1404,6 +1621,161 @@
         }
         return `<tr><td>${MONTHS_RU[Number(mm) - 1]}</td>${valCells}${cmpCells.join("")}</tr>`;
       }).join("") || `<tr><td colspan="8">Нет данных</td></tr>`;
+    }
+
+    function renderCheki() {
+      const panel = el("chekiPanel");
+      if (!CHEKI) {
+        panel.classList.add("hidden");
+        return;
+      }
+      panel.classList.remove("hidden");
+      const rows = filteredChekiRows();
+      const s = buildChekiStats(rows);
+      window.__chekiStats = s;
+
+      el("chekiKpiCnt").textContent = s.saleCnt.toLocaleString("ru-RU");
+      el("chekiKpiRev").textContent = fmt(s.saleSum);
+      el("chekiKpiAvg").textContent = fmt(s.avgCheck);
+      el("chekiKpiRet").textContent = fmt(s.retSum);
+      el("chekiKpiRetCnt").textContent = s.retCnt ? `${s.retCnt.toLocaleString("ru-RU")} чеков` : "возвратов нет";
+      el("chekiKpiPeriod").textContent = s.days
+        ? `${formatRuDate(s.minDate)} — ${formatRuDate(s.maxDate)} · ${s.days} дн.`
+        : "нет данных";
+
+      chekiHourChart.data.labels = s.hourKeys.map((h) => h.hour + ":00");
+      chekiHourChart.data.datasets[0].data = s.hourKeys.map((h) => h.saleCnt);
+      chekiHourChart.data.datasets[1].data = s.hourKeys.map((h) => (h.saleCnt ? Math.round(h.saleSum / h.saleCnt) : null));
+      chekiHourChart.update();
+
+      el("chekiHourBody").innerHTML = s.hourKeys.map((h) => `
+        <tr>
+          <td>${h.hour}:00 — ${h.hour + 1}:00</td>
+          <td class="num">${h.saleCnt.toLocaleString("ru-RU")}</td>
+          <td class="num">${fmt(h.saleSum - h.retSum)}</td>
+          <td class="num">${h.saleCnt ? fmt(Math.round(h.saleSum / h.saleCnt)) : "—"}</td>
+        </tr>
+      `).join("") || '<tr><td colspan="4">Нет данных</td></tr>';
+
+      chekiMonthChart.data.labels = s.monthKeys.map((m) => labelMonth(m.key));
+      chekiMonthChart.data.datasets[0].data = s.monthKeys.map((m) => m.saleCnt);
+      chekiMonthChart.data.datasets[1].data = s.monthKeys.map((m) => (m.saleCnt ? Math.round(m.saleSum / m.saleCnt) : null));
+      chekiMonthChart.update();
+
+      el("chekiStoreBody").innerHTML = s.storeList.map((x) => `
+        <tr>
+          <td><span class="store-dot" style="background:${STORE_COLORS[x.si % STORE_COLORS.length]}"></span>${x.name}</td>
+          <td class="num">${x.saleCnt.toLocaleString("ru-RU")}</td>
+          <td class="num">${fmt(x.saleSum)}</td>
+          <td class="num">${fmt(Math.round(x.avg))}</td>
+        </tr>
+      `).join("") || '<tr><td colspan="4">Нет данных</td></tr>';
+
+      el("chekiDeptBody").innerHTML = s.deptList.map((x) => `
+        <tr>
+          <td>${x.name}</td>
+          <td class="num">${x.saleCnt.toLocaleString("ru-RU")}</td>
+          <td class="num">${fmt(x.saleSum)}</td>
+          <td class="num">${fmt(Math.round(x.avg))}</td>
+        </tr>
+      `).join("") || '<tr><td colspan="4">Нет данных</td></tr>';
+    }
+
+    function filteredChekiRows() {
+      if (!CHEKI) return [];
+      const from = fromEl.value;
+      const to = toEl.value;
+      const res = [];
+      for (const row of CHEKI.rows) {
+        const [date, , csi, cdi, , , ] = row;
+        if (date < from || date > to) continue;
+        const si = CHEKI_SI[csi];
+        if (si < 0) continue;
+        if (storeValue !== "all" && String(si) !== storeValue) continue;
+        const di = CHEKI_DI[cdi];
+        if (di < 0) continue;
+        if (deptValue !== "all" && String(di) !== deptValue) continue;
+        res.push(row);
+      }
+      return res;
+    }
+
+    function buildChekiStats(rows) {
+      let saleCnt = 0;
+      let saleSum = 0;
+      let retCnt = 0;
+      let retSum = 0;
+      let minHour = 23;
+      let maxHour = 0;
+      let minDate = null;
+      let maxDate = null;
+      const days = new Set();
+      const byHour = new Map();
+      const byMonth = new Map();
+      const byStore = new Map();
+      const byDept = new Map();
+
+      for (const [date, hour, si, di, kind, cnt, sum] of rows) {
+        if (kind === 0) {
+          saleCnt += cnt;
+          saleSum += sum;
+        } else {
+          retCnt += cnt;
+          retSum += sum;
+        }
+
+        let hm = byHour.get(hour);
+        if (!hm) byHour.set(hour, (hm = { saleCnt: 0, saleSum: 0, retSum: 0 }));
+        if (kind === 0) { hm.saleCnt += cnt; hm.saleSum += sum; } else { hm.retSum += sum; }
+        if (hour < minHour) minHour = hour;
+        if (hour > maxHour) maxHour = hour;
+
+        const mk = monthKey(date);
+        let mm = byMonth.get(mk);
+        if (!mm) byMonth.set(mk, (mm = { saleCnt: 0, saleSum: 0, retSum: 0 }));
+        if (kind === 0) { mm.saleCnt += cnt; mm.saleSum += sum; } else { mm.retSum += sum; }
+
+        let sm = byStore.get(si);
+        if (!sm) byStore.set(si, (sm = { saleCnt: 0, saleSum: 0, retSum: 0 }));
+        if (kind === 0) { sm.saleCnt += cnt; sm.saleSum += sum; } else { sm.retSum += sum; }
+
+        let dm = byDept.get(di);
+        if (!dm) byDept.set(di, (dm = { saleCnt: 0, saleSum: 0, retSum: 0 }));
+        if (kind === 0) { dm.saleCnt += cnt; dm.saleSum += sum; } else { dm.retSum += sum; }
+
+        days.add(date);
+        if (!minDate || date < minDate) minDate = date;
+        if (!maxDate || date > maxDate) maxDate = date;
+      }
+
+      const hourKeys = [];
+      for (let h = minHour; h <= maxHour; h++) {
+        const v = byHour.get(h) || { saleCnt: 0, saleSum: 0, retSum: 0 };
+        hourKeys.push({ hour: h, ...v });
+      }
+
+      const monthKeys = [...byMonth.keys()].sort().map((k) => ({ key: k, ...byMonth.get(k) }));
+      const storeList = DATA.stores
+        .map((name, si) => {
+          const v = byStore.get(si) || { saleCnt: 0, saleSum: 0, retSum: 0 };
+          return { si, name, ...v, avg: v.saleCnt ? v.saleSum / v.saleCnt : 0 };
+        })
+        .filter((x) => x.saleCnt > 0)
+        .sort((a, b) => b.saleSum - a.saleSum);
+      const deptList = DATA.depts
+        .map((name, di) => {
+          const v = byDept.get(di) || { saleCnt: 0, saleSum: 0, retSum: 0 };
+          return { di, name, ...v, avg: v.saleCnt ? v.saleSum / v.saleCnt : 0 };
+        })
+        .filter((x) => x.saleCnt > 0)
+        .sort((a, b) => b.saleSum - a.saleSum);
+
+      return {
+        saleCnt, saleSum, retCnt, retSum,
+        avgCheck: saleCnt ? saleSum / saleCnt : 0,
+        hourKeys, monthKeys, storeList, deptList,
+        days: days.size, minDate, maxDate,
+      };
     }
 
     function render() {
@@ -1499,14 +1871,15 @@
 
       el("footnote").textContent =
         `Чистая выручка = выручка − возвраты · данные с ${DATA.from} по ${DATA.to}`;
+      renderCheki();
       updateResetVisibility();
     }
 
     function destroyCharts() {
-      [yoyChart, trendChart, storeChart].forEach((chart) => {
+      [yoyChart, trendChart, storeChart, chekiHourChart, chekiMonthChart].forEach((chart) => {
         try { chart && chart.destroy(); } catch (_) {}
       });
-      yoyChart = trendChart = storeChart = null;
+      yoyChart = trendChart = storeChart = chekiHourChart = chekiMonthChart = null;
     }
 
     function setConvertStatus(text, kind) {
@@ -1610,6 +1983,7 @@
       window.SALES_DATA = payload;
       lastPayload = payload;
       rebuildDerived();
+      rebuildChekiIndex();
       destroyCharts();
       storeValue = "all";
       deptValue = "all";
