@@ -47,8 +47,9 @@
     }
 
     .filters {
-      position: relative;
-      z-index: 40;
+      position: sticky;
+      top: 10px;
+      z-index: 60;
       display: grid;
       gap: 14px;
       margin-bottom: 18px;
@@ -57,6 +58,7 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
       backdrop-filter: blur(10px);
+      box-shadow: 0 12px 28px rgba(21, 32, 43, 0.1);
     }
 
     .filters:has(.dd.open),
